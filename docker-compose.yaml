@@ -1,0 +1,57 @@
+volumes:
+  logvolume: {}  # <- defines the named volume 
+services:
+    alloy:
+        image: grafana/alloy:v1.7.5
+        ports:
+            - "12345:12345"
+        volumes:
+            - ./config.alloy:/etc/alloy/config.alloy
+            - logvolume:/var/log:ro
+        command: >
+            run
+            --server.http.listen-addr=0.0.0.0:12345
+            --storage.path=/var/lib/alloy/data
+            /etc/alloy/config.alloy
+    loki:
+        image: grafana/loki:3.4.3
+        ports:
+        - "3100:3100"
+        command: -config.file=/etc/loki/local-config.yaml
+    grafana:
+        image: grafana/grafana:11.6.0
+        ports:
+        - "3000:3000"
+
+    # Express App Instance 1
+    mockapi-1:
+        image: sandmanren/example_service:latest
+        environment:
+        - SERVER_NAME=mockapi-1
+        - SERVER_PORT=4001
+        ports:
+        - "4001:4001"
+        volumes:
+        - logvolume:/var/log:rw
+
+    # Express App Instance 2
+    mockapi-2:
+        image: sandmanren/example_service:latest
+        environment:
+        - SERVER_NAME=mockapi-2
+        - SERVER_PORT=4002
+        ports:
+        - "4002:4002"
+        volumes:
+        - logvolume:/var/log:rw
+
+    # Express App Instance 3
+    mockapi-3:
+        image: sandmanren/example_service:latest
+        environment:
+        - SERVER_NAME=mockapi-3
+        - SERVER_PORT=4003
+        ports:
+        - "4003:4003"
+        volumes:
+        - logvolume:/var/log:rw
