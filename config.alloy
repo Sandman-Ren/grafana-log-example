@@ -1,3 +1,4 @@
+// Read /var/log and relabel with job names and service names
 local.file_match "local_files" {
     path_targets = [{"__path__" = "/var/log/*.log"}]
     sync_period = "5s"
@@ -20,8 +21,34 @@ loki.process "labels" {
   }
 }
 
+// write to grafana loki
 loki.write "grafana_loki" {
     endpoint {
         url = "http://loki:3100/loki/api/v1/push"
     }
+}
+
+
+// Read metrics on Docker socket and send to prometheus
+prometheus.exporter.cadvisor "docker_metrics" {
+  docker_host = "unix:///var/run/docker.sock"
+
+  storage_duration = "5m"
+}
+
+
+// Configure a prometheus.scrape component to collect cadvisor metrics.
+prometheus.scrape "docker_metrics" {
+  targets    = prometheus.exporter.cadvisor.docker_metrics.targets
+  forward_to = [ prometheus.remote_write.docker_metrics.receiver ]
+
+
+  scrape_interval = "10s"
+}
+
+// Configure a prometheus.remote_write component to send metrics to a Prometheus server.
+prometheus.remote_write "docker_metrics" {
+  endpoint {
+    url = "http://prometheus:9090/api/v1/write"
+  }
 }

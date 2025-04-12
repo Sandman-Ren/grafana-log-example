@@ -10,6 +10,13 @@ services:
             - logvolume:/var/log:ro
         command: >
             run --server.http.listen-addr=0.0.0.0:12345 --storage.path=/var/lib/alloy/data /etc/alloy/config.alloy
+    prometheus:
+     image: prom/prometheus:v2.53.4
+     command:
+       - --web.enable-remote-write-receiver
+       - --config.file=/etc/prometheus/prometheus.yml
+     ports:
+       - "9090:9090"
     loki:
         image: grafana/loki:3.4.3
         ports:
@@ -36,6 +43,14 @@ services:
                   url: http://loki:3100
                   basicAuth: false
                   isDefault: false
+                  version: 1
+                  editable: false
+                - name: Prometheus
+                  type: prometheus
+                  orgId: 1
+                  url: http://prometheus:9090
+                  basicAuth: false
+                  isDefault: true
                   version: 1
                   editable: false
               EOF
@@ -93,10 +108,12 @@ services:
         image: busybox:latest
         depends_on:
             - nginx
+        environment:
+            - QPS=10
         command: >
             sh -c " while true; do
                 echo 'Starting load test for /liveliness and /user endpoints';
-                for i in $(seq 1 3); do
+                for i in $(seq 1 $QPS); do
                     wget -qO- http://nginx:80/liveliness > /dev/null &
                     wget -qO- http://nginx:80/user > /dev/null &
                 done;
